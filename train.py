@@ -309,7 +309,10 @@ def train(args, training_features, valid_features, model, tokenizer):
 
             # loss = model(**inputs)
             outputs = model(**inputs)
-            pseudo_lm_loss, mist_pseudo_lm_loss, length_loss = outputs[:3]
+            if args.cotrain_put_target_in_source:
+                pseudo_lm_loss, mist_pseudo_lm_loss, length_loss = outputs[:3]
+            else:
+                pseudo_lm_loss, length_loss = outputs[:2]
             if args.n_gpu > 1:
                 # loss = loss.mean()  # mean() to average on multi-gpu parallel (not distributed) training
                 if args.cotrain_put_target_in_source:
@@ -611,7 +614,7 @@ def nat_get_model_and_tokenizer(args):
     # tokenizer.mask_token_id
     tokenizer = BertTokenizer.from_pretrained(args.model_name_or_path)
     if args.cotrain_put_target_in_source:
-        from model_put_target_in_source import MISTNAT
+        from model_mist import MISTNAT
         model = MISTNAT(args.model_name_or_path, use_glat=args.use_glat, glat_f=args.glat_f,
                         sep_word_id=tokenizer.sep_token_id, pad_word_id=tokenizer.pad_token_id,
                         mask_word_id=tokenizer.mask_token_id, clear_bert_weight=args.clear_bert_weight)

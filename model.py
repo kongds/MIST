@@ -119,7 +119,7 @@ class NAT(nn.Module):
             token_type_ids.masked_fill_(~source_mask, 1)
 
             length_out = (target_ids != self.pad_word_id).sum(-1)
-            prediction_tokens, prediction_tokens_before, pred_length_out = self.forward_decode(source_ids, token_type_ids,
+            prediction_tokens, pred_length_out = self.forward_decode(source_ids, token_type_ids,
                                                                     position_ids, source_mask)
             len_acc = (length_out == pred_length_out).sum()
             min_size = min(target_ids.shape[-1], prediction_tokens.shape[-1])
@@ -127,7 +127,7 @@ class NAT(nn.Module):
             tokens_acc = (prediction_tokens[:, :min_size] == target_ids[:, :min_size]).masked_fill(~_target_mask, 0).sum()
             tokens_acc = torch.true_divide(tokens_acc, _target_mask.sum())
             len_acc = torch.true_divide(len_acc, length_out.shape[0])
-            return prediction_tokens, prediction_tokens_before, pred_length_out, len_acc, tokens_acc
+            return prediction_tokens, pred_length_out, len_acc, tokens_acc
 
         if self.use_glat:
             with torch.no_grad():
@@ -165,6 +165,7 @@ class NAT(nn.Module):
             denominator = torch.sum(mask) + 1e-5
             return (loss / denominator).sum()
 
+        pseudo_sequence_output = sequence_output[:, source_len:, ]
         prediction_scores_masked = self.cls(pseudo_sequence_output)
         masked_lm_loss = self.crit_mask_lm(prediction_scores_masked.transpose(1, 2).float(), target_ids)
         pseudo_lm_loss = loss_mask_and_normalize(masked_lm_loss.float(), target_mask)
