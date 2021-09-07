@@ -39,6 +39,14 @@ MODEL_CLASSES = {
 }
 
 
+def remove_repeat(l):
+    out = []
+    for i in l.split():
+        if len(out) > 1 and out[-1] == i:
+            continue
+        out.append(i)
+    return ' '.join(out)
+
 def prepare_for_training(args, model, checkpoint_state_dict, amp):
     no_decay = ['bias', 'LayerNorm.weight']
     optimizer_grouped_parameters = [
@@ -150,13 +158,6 @@ def valid(args, valid_features, model, tokenizer, save_path, test=False, train=F
         from rouge import FilesRouge
         files_rouge = FilesRouge()
         ref_path = args.train_file if train else args.test_file if test else args.valid_file
-        def remove_repeat(l):
-            out = []
-            for i in l.split():
-                if len(out) > 1 and out[-1] == i:
-                    continue
-                out.append(i)
-            return ' '.join(out)
         of = open('out_f')
         with open('out_f_merge_duplicate', 'w') as f:
             f.write('\n'.join([remove_repeat(line) for line in of]))
@@ -177,17 +178,24 @@ def valid(args, valid_features, model, tokenizer, save_path, test=False, train=F
         print(scores)
     elif test:
         test_file = args.test_file
-        scores = eval_utils.eval('./out_f', test_file.replace('json', 'src'), test_file.replace('json', 'tgt') )
-    elif train:
-        train_file = args.train_file
-        scores = eval_utils.eval('./out_f', train_file.replace('json', 'src'), train_file.replace('json', 'tgt') )
+        of = open('out_f')
+        with open('out_f_merge_duplicate', 'w') as f:
+            f.write('\n'.join([remove_repeat(line) for line in of]))
+        of.close()
+        scores = eval_utils.eval('./out_f_merge_duplicate', test_file.replace('json', 'src'), test_file.replace('json', 'tgt'),
+                                 fix_token='quora' in args.valid_file)
     else:
         # dev_nat2gd_with_src.json
         if 'dev.json' in args.valid_file:
             valid_file = args.valid_file
         else:
             valid_file = re.sub('\/dev.*json', '/dev.json', args.valid_file)
-        scores = eval_utils.eval('./out_f', valid_file.replace('json', 'src'), valid_file.replace('json', 'tgt') )
+        of = open('out_f')
+        with open('out_f_merge_duplicate', 'w') as f:
+            f.write('\n'.join([remove_repeat(line) for line in of]))
+        of.close()
+        scores = eval_utils.eval('./out_f_merge_duplicate', valid_file.replace('json', 'src'), valid_file.replace('json', 'tgt'),
+                                 fix_token='quora' in args.valid_file)
     model.train()
     return np.mean(len_acces), np.mean(tokens_acces), scores
 
@@ -615,12 +623,12 @@ def nat_get_model_and_tokenizer(args):
     tokenizer = BertTokenizer.from_pretrained(args.model_name_or_path)
     if args.cotrain_put_target_in_source:
         from model_mist import MISTNAT
-        model = MISTNAT(args.model_name_or_path, use_glat=args.use_glat, glat_f=args.glat_f,
+        model = MISTNAT(args.model_name_or_path, use_glat=args.use_glat, glat_f=args.glat_f, label_smoothing=args.label_smoothing,
                         sep_word_id=tokenizer.sep_token_id, pad_word_id=tokenizer.pad_token_id,
                         mask_word_id=tokenizer.mask_token_id, clear_bert_weight=args.clear_bert_weight)
     else:
         from model import NAT
-        model = NAT(args.model_name_or_path, use_glat=args.use_glat, glat_f=args.glat_f,
+        model = NAT(args.model_name_or_path, use_glat=args.use_glat, glat_f=args.glat_f, label_smoothing=args.label_smoothing,
                         sep_word_id=tokenizer.sep_token_id, pad_word_id=tokenizer.pad_token_id,
                         mask_word_id=tokenizer.mask_token_id, clear_bert_weight=args.clear_bert_weight)
     return model, tokenizer
@@ -717,8 +725,8 @@ def main():
             model.half()
         with torch.no_grad():
             valid_path, _ = os.path.split(args.valid_model_path)
-            len_acc, tokens_acc, scores = valid(args, validing_features,
-                                                model, tokenizer, valid_path)
+            #len_acc, tokens_acc, scores = valid(args, validing_features,
+                                                #model, tokenizer, valid_path)
             if args.test:
                 len_acc, tokens_acc, scores = valid(args, testing_features,
                                                     model, tokenizer, valid_path, test=True)

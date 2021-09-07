@@ -148,7 +148,7 @@ class QGEvalCap:
 
 
 def eval(out_file, src_file, tgt_file, isDIn=False, num_pairs=500,
-        dataset=None, dataset_split='validation', src_key=None, tgt_key=None):
+         dataset=None, dataset_split='validation', src_key=None, tgt_key=None, fix_token=False):
     """
         Given a filename, calculate the metric scores for that prediction file
 
@@ -179,7 +179,10 @@ def eval(out_file, src_file, tgt_file, isDIn=False, num_pairs=500,
     output = []
     with open(out_file, 'r') as infile:
         for line in infile:
-            line = fix_tokenization(line[:-1].strip()).lower()
+            if fix_token:
+                line = fix_tokenization(line[:-1].strip()).lower()
+            else:
+                line = line[:-1].strip().lower()
             output.append(line)
 
     for idx, pair in enumerate(pairs):
