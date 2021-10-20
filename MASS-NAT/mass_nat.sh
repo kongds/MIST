@@ -4,6 +4,9 @@ set -euo pipefail
 cp -r $1 qg
 mkdir -p qg_p
 wget https://raw.githubusercontent.com/microsoft/MASS/master/MASS-summarization/encode.py
+sed -i "s/enc_lines.append(\" \".join(tokens))/enc_lines.append(\" \".join(tokens[:510]))/" encode.py
+
+pip install fairseq==0.8.0 pytorch_transformers
 for SPLIT in train dev test; do
   for LANG in tgt src
   do
