@@ -17,6 +17,7 @@ from torch.utils.data.distributed import DistributedSampler
 
 import eval_utils
 
+from preprocess import split_json
 from preprocess import load_and_cache_examples
 from preprocess import load_and_cache_examples_fast
 from preprocess import load_and_cache_examples_two_stage
@@ -170,7 +171,10 @@ def valid(args, valid_features, model, tokenizer, save_path, test=False, train=F
                     sed -i "s/ )/)/g" out_f_merge_duplicate;
                     ''')
         gf = open('./gd', 'w')
-        with open(ref_path.replace('json', 'tgt')) as f:
+        ref_path_tgt = ref_path.replace('json', 'tgt')
+        if not os.path.exists(ref_path_tgt):
+            split_json(ref_path)
+        with open(ref_path_tgt) as f:
             gf.writelines([i.lower() for i in f.readlines()])
         gf.close()
         _scores = files_rouge.get_scores('./out_f_merge_duplicate', './gd', avg=True)
@@ -182,7 +186,11 @@ def valid(args, valid_features, model, tokenizer, save_path, test=False, train=F
         with open('out_f_merge_duplicate', 'w') as f:
             f.write('\n'.join([remove_repeat(line) for line in of]))
         of.close()
-        scores = eval_utils.eval('./out_f_merge_duplicate', test_file.replace('json', 'src'), test_file.replace('json', 'tgt'),
+
+        test_file_src, test_file_tgt = test_file.replace('json', 'src'), test_file.replace('json', 'tgt')
+        if not os.path.exists(test_file_src) or not os.path.exists(test_file_tgt):
+            split_json(test_file)
+        scores = eval_utils.eval('./out_f_merge_duplicate', test_file_src, test_file_tgt,
                                  fix_token='quora' in args.valid_file)
     else:
         # dev_nat2gd_with_src.json
@@ -194,7 +202,11 @@ def valid(args, valid_features, model, tokenizer, save_path, test=False, train=F
         with open('out_f_merge_duplicate', 'w') as f:
             f.write('\n'.join([remove_repeat(line) for line in of]))
         of.close()
-        scores = eval_utils.eval('./out_f_merge_duplicate', valid_file.replace('json', 'src'), valid_file.replace('json', 'tgt'),
+
+        valid_file_src, valid_file_tgt = valid_file.replace('json', 'src'), valid_file.replace('json', 'tgt')
+        if not os.path.exists(valid_file_src) or not os.path.exists(valid_file_tgt):
+            split_json(valid_file)
+        scores = eval_utils.eval('./out_f_merge_duplicate', valid_file_src, valid_file_tgt,
                                  fix_token='quora' in args.valid_file)
     model.train()
     return np.mean(len_acces), np.mean(tokens_acces), scores

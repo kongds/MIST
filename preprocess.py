@@ -9,6 +9,18 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def split_json(json_file):
+    src_data = open(json_file.replace('.json', '.src'), 'w')
+    tgt_data = open(json_file.replace('.json', '.tgt'), 'w')
+
+    with open(json_file) as f:
+        for l in f:
+            t = json.loads(l)
+            src_data.write(t['src'] + '\n')
+            tgt_data.write(t['tgt'] + '\n')
+    src_data.close()
+    tgt_data.close()
+
 def merge_to_json(path, src='.src', tgt='.tgt'):
     src_data = open(path+src).readlines()
     tgt_data = open(path+tgt).readlines()
