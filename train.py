@@ -78,7 +78,7 @@ def prepare_for_training(args, model, checkpoint_state_dict, amp):
     return model, optimizer
 
 
-def valid(args, valid_features, model, tokenizer, save_path, test=False, train=False):
+def valid(args, valid_features, model, tokenizer, save_path, test=False, train=False, remove_dup=False):
     model.eval()
     batch_size = args.per_gpu_train_batch_size
     valid_f = open('./out_f', 'w')
@@ -161,7 +161,10 @@ def valid(args, valid_features, model, tokenizer, save_path, test=False, train=F
         ref_path = args.train_file if train else args.test_file if test else args.valid_file
         of = open('out_f')
         with open('out_f_merge_duplicate', 'w') as f:
-            f.write('\n'.join([remove_repeat(line) for line in of]))
+            if remove_dup:
+                f.write('\n'.join([remove_repeat(line) for line in of]))
+            else:
+                f.write('\n'.join([line for line in of]))
         of.close()
         os.system('''sed -i "s/ - / /g" out_f_merge_duplicate;
                     sed -i "s/ ' s/'s/g" out_f_merge_duplicate;
@@ -200,7 +203,10 @@ def valid(args, valid_features, model, tokenizer, save_path, test=False, train=F
             valid_file = re.sub('\/dev.*json', '/dev.json', args.valid_file)
         of = open('out_f')
         with open('out_f_merge_duplicate', 'w') as f:
-            f.write('\n'.join([remove_repeat(line) for line in of]))
+            if remove_dup:
+                f.write('\n'.join([remove_repeat(line) for line in of]))
+            else:
+                f.write('\n'.join([line for line in of]))
         of.close()
 
         valid_file_src, valid_file_tgt = valid_file.replace('json', 'src'), valid_file.replace('json', 'tgt')
@@ -738,10 +744,10 @@ def main():
         with torch.no_grad():
             valid_path, _ = os.path.split(args.valid_model_path)
             #len_acc, tokens_acc, scores = valid(args, validing_features,
-                                                #model, tokenizer, valid_path)
+                                                #model, tokenizer, valid_path, remove_dup=True)
             if args.test:
                 len_acc, tokens_acc, scores = valid(args, testing_features,
-                                                    model, tokenizer, valid_path, test=True)
+                                                    model, tokenizer, valid_path, test=True, remove_dup=True)
 
         if args.local_rank == 0:
             torch.distributed.barrier()
